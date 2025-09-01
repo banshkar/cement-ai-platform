@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+pydantic
+google-cloud-pubsub
+google-cloud-bigquery
+google-cloud-vision
+google-cloud-aiplatform
+firebase-admin
+
+
+//
+
+Control Room View
