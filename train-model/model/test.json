@@ -1,0 +1,40 @@
+{
+  "instances": [
+  [
+  {
+    "motor_load": 50.0,
+    "feeder_rate": 120.0,
+    "emissions": 0.5,
+    "vibration": 0.01,
+    "pressure": 1.2,
+    "fuel_rate": 75.0,
+    "raw_feed": 200.0,
+    "grinding_power": 150.0,
+    "hour": 14,
+    "minute": 30,
+    "hour_sin": 0.99,
+    "hour_cos": 0.12,
+    "minute_sin": 0.0,
+    "minute_cos": 1.0,
+    "prev_temp_1": 1200,
+    "prev_temp_2": 1198,
+    "prev_temp_3": 1197,
+    "prev_temp_4": 1195,
+    "prev_temp_5": 1193,
+    "prev_temp_6": 1190,
+    "rolling_3": 1198,
+    "rolling_5": 1196,
+    "rolling_7": 1195,
+    "rolling_10": 1194,
+    "motor_feeder": 6000,
+    "motor_fuel": 0.67,
+    "motor_feeder_fuel": 8.0,
+    "grind_raw_ratio": 0.75,
+    "motor_emission": 25.0,
+    "fuel_pressure": 90.0,
+    "vibration_motor": 0.5
+  }
+]
+
+  ]
+}

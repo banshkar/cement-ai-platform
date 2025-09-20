@@ -1,13 +1,9 @@
 fastapi
-uvicorn[standard]
-pydantic
-google-cloud-pubsub
+uvicorn
+pandas
+google
 google-cloud-bigquery
-google-cloud-vision
+google-cloud-storage
+google-cloud-pubsub
 google-cloud-aiplatform
 firebase-admin
-
-
-//
-
-Control Room View

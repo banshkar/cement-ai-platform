@@ -1,7 +1,7 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-cred = credentials.Certificate("path/to/firebase_service_account.json")
+cred = credentials.Certificate("app/keys/cement-dashboard-2025-78acd-firebase-adminsdk-fbsvc-5bbdf22113.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
