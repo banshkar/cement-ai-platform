@@ -35,6 +35,21 @@ class ChatBotResponse(BaseModel):
 
 app = FastAPI(title="Cement AI ChatBot Service")
 
+allow_origins=[
+    "https://cement-dashboard-2025.web.app",
+    "https://cement-dashboard-2025.web.app/",
+    "http://localhost:3000",
+    "http://localhost:8080",
+]
+
+# Apply CORS middleware globally
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins,        # allow your frontend origin
+    allow_credentials=True,
+    allow_methods=["*"],          # allow GET, POST, etc.
+    allow_headers=["*"],          # allow all headers
+)
 
 
 
@@ -46,20 +61,6 @@ if __name__ == "__main__":
     import os, uvicorn
     port = int(os.environ.get("PORT", 8080))
     uvicorn.run("app.main:app", host="0.0.0.0", port=port)
-
-
-origins = [
-    "https://cement-dashboard-2025.web.app",  # <--- no trailing slash
-    "http://localhost:3000",  # optional for local dev
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 
 
@@ -203,8 +204,9 @@ def live_predict():
     sensor_dict = process_sensor_row(sensor_input.dict())
     vertex_payload = sensor_to_list(sensor_dict)
     vertex_pred = vertex_ai.predict_sensor(vertex_payload)
-    prediction = vertex_pred.predictions[0]
 
+    # Access predictions correctly
+    prediction = vertex_pred
     alerts = anomaly.detect_anomaly(sensor_input)
     raw_mill_opt = optimization.raw_mill(sensor_input)
     fuel_opt = optimization.fuel_mix(sensor_input)
@@ -227,48 +229,67 @@ def live_predict():
 
 
 # -------------------------
-
+def serialize_datetime_vertex(sensor_dict):
+    for k, v in sensor_dict.items():
+        if isinstance(v, datetime):
+            sensor_dict[k] = v.isoformat()  # convert to ISO string
+    return sensor_dict
 
 
 @app.post("/apply-af-correction")
 def predict_apply_af(sensor: SensorInput):
-    # --- Step A: ML model baseline prediction ---
-    sensor_dict = process_sensor_row(sensor.dict())
-    sensor_dict = serialize_datetime(sensor_dict)  # <-- serialize here
-    vertex_payload = sensor_to_list(sensor_dict)
-    vertex_pred = vertex_ai.predict_sensor(vertex_payload)
-    base_prediction = vertex_pred.predictions[0]
+    try:
+        # --- Step A: ML model baseline prediction ---
+        sensor_dict = process_sensor_row(sensor.dict())
+        sensor_dict = serialize_datetime_vertex(sensor_dict)  # ensures no datetime leaks
+        vertex_payload = sensor_to_list(sensor_dict)
+        vertex_pred = vertex_ai.predict_sensor(vertex_payload)
 
-    alerts = anomaly.detect_anomaly(sensor)
-    raw_mill_opt = optimization.raw_mill(sensor)
-    fuel_opt = optimization.fuel_mix(sensor)
-    holistic_opt = cross_process.holistic_optimization(sensor)
-    gen_ai_rec = generative_ai.generate_strategy(sensor, base_prediction)
+        print("Vertex Prediction Raw:", vertex_pred)
 
+        # --- If no prediction, short-circuit ---
+      
 
-    # --- Step B: Apply AF correction ---
-    adj_prediction = predicted_temp_with_af(
-        base_temp=base_prediction,
-        coal_cv=sensor.coal_calorific,
-        af_cv=sensor.af_calorific,
-        af_pct=sensor.af_share_pct
-    )
-    new_fuel_rate = required_fuel_rate_to_hold_heat(
-        current_fuel_rate=sensor.fuel_rate,
-        coal_cv=sensor.coal_calorific,
-        af_cv=sensor.af_calorific,
-        af_pct=sensor.af_share_pct
-    )
+        base_prediction = vertex_pred
+        print("correction Prediction:", base_prediction)    
+        # --- Other calculations ---
+        alerts = anomaly.detect_anomaly(sensor)
+        raw_mill_opt = optimization.raw_mill(sensor)
+        fuel_opt = optimization.fuel_mix(sensor)
+        holistic_opt = cross_process.holistic_optimization(sensor)
+        gen_ai_rec = generative_ai.generate_strategy(sensor, base_prediction)
 
-    return {
-        "base_prediction": round(base_prediction, 2),
-        "adjusted_prediction": round(adj_prediction, 2),
-        "required_fuel_rate": round(new_fuel_rate, 2),
-        "fuel_rate_delta": round(new_fuel_rate - sensor.fuel_rate, 2),
-        "af_share_pct": sensor.af_share_pct,
-        "af_calorific": sensor.af_calorific
-    }
+        # --- Step B: Apply AF correction ---
+        adj_prediction = predicted_temp_with_af(
+            base_temp=base_prediction,
+            coal_cv=sensor.coal_calorific,
+            af_cv=sensor.af_calorific,
+            af_pct=sensor.af_share_pct
+        )
 
+        new_fuel_rate = required_fuel_rate_to_hold_heat(
+            current_fuel_rate=sensor.fuel_rate,
+            coal_cv=sensor.coal_calorific,
+            af_cv=sensor.af_calorific,
+            af_pct=sensor.af_share_pct
+        )
+
+        # --- Safe response building ---
+        return {
+            "base_prediction": round(float(base_prediction), 2),
+            "adjusted_prediction": round(float(adj_prediction), 2) if adj_prediction else None,
+            "required_fuel_rate": round(float(new_fuel_rate), 2) if new_fuel_rate else None,
+            "fuel_rate_delta": round(float(new_fuel_rate - sensor.fuel_rate), 2) if new_fuel_rate else None,
+            "af_share_pct": sensor.af_share_pct,
+            "af_calorific": sensor.af_calorific
+        }
+
+    except Exception as e:
+        print("Error in apply-af-correction:", e)
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
 
 
 

@@ -1,18 +1,21 @@
 from google.genai import Client
 import re
 import json
-
-client = Client(api_key="AIzaSyBt_UZ7K3RMoJ-MSQestGuHaJ6agOkUG-E")
-
+import os
+# Ideally, move API key to an environment variable in Cloud Run
+GENAI_API_KEY = os.environ.get("GENAI_API_KEY", "AIzaSyBt_UZ7K3RMoJ-MSQestGuHaJ6agOkUG-E")
+client = Client(api_key=GENAI_API_KEY)
 
 def generate_strategy(sensor, prediction):
     """
     Generate operational recommendations using Gemini + rule-based logic.
+    Handles None values and malformed Gemini responses gracefully.
     """
     recommendations = []
     print("Sensor in Gen AI:", sensor)
 
-    sensor_dict = sensor.dict()
+    # Convert Pydantic model to dict
+    sensor_dict = sensor.dict() if hasattr(sensor, "dict") else sensor
 
     # ----------------------------
     # Rule-based recommendations
@@ -20,7 +23,7 @@ def generate_strategy(sensor, prediction):
     if sensor_dict.get("emissions", 0) > 400:
         recommendations.append({"recommendation": "Reduce emissions", "priority": "critical"})
 
-    forecast_temp = prediction
+    forecast_temp = prediction if prediction is not None else 0
     if forecast_temp > 1160:
         recommendations.append({"recommendation": "Adjust feed rate", "priority": "critical"})
 
